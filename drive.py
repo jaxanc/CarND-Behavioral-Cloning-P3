@@ -49,20 +49,14 @@ set_speed = 15
 controller.set_desired(set_speed)
 
 def image_preprocessing(image):
-    '''
-    Method for preprocessing images: this method is the same used in drive.py, except this version uses
-    BGR to YUV and drive.py uses RGB to YUV (due to using cv2 to read the image here, where drive.py images are
-    received in RGB)
-    '''
-    # original shape: 160x320x3, input shape for neural net: 66x200x3
     # crop to 90x320x3
     image = image[50:140,:,:]
 
-    # scale to 66x200x3 (same as nVidia)
+    # scale to 66x200x3
     image = cv2.resize(image,(200, 66), interpolation = cv2.INTER_AREA)
     #image = cv2.resize(image,(64, 64), interpolation = cv2.INTER_AREA)
 
-    # convert to YUV color space (as nVidia paper suggests)
+    # convert to YUV color space
     return cv2.cvtColor(image, cv2.COLOR_RGB2YUV)
 
 @sio.on('telemetry')
