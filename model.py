@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import tensorflow as tf
 from keras.models import Sequential
-from keras.layers import Lambda, Flatten, Dense, Convolution2D
+from keras.layers import Lambda, Flatten, Dense, Convolution2D, Dropout
 from keras.models import load_model
 from keras import callbacks
 from keras.optimizers import Adam
@@ -73,67 +73,13 @@ samples.pop(0)
 train_samples, validation_samples = train_test_split(samples, test_size = 0.2)
 
 
-# ## Augmentation Functions
-
-# In[7]:
-
-def augment_brightness_camera_images(image):
-    image1 = cv2.cvtColor(image,cv2.COLOR_BGR2HSV)
-    image1 = np.array(image1, dtype = np.float64)
-    random_bright = .5+np.random.uniform()
-    image1[:,:,2] = image1[:,:,2]*random_bright
-    image1[:,:,2][image1[:,:,2]>255]  = 255
-    image1 = np.array(image1, dtype = np.uint8)
-    return cv2.cvtColor(image1,cv2.COLOR_HSV2BGR)
-
-
-# In[8]:
-
-def trans_image(image,steer,trans_range):
-    rows,cols,ch = image.shape
-    
-    # Translation
-    tr_x = trans_range*np.random.uniform()-trans_range/2
-    steer_ang = steer + tr_x/trans_range*2*.2
-    tr_y = 40*np.random.uniform()-40/2
-
-    Trans_M = np.float32([[1,0,tr_x],[0,1,tr_y]])
-    image_tr = cv2.warpAffine(image,Trans_M,(cols,rows))
-    
-    return image_tr,steer_ang
-
-
-# In[9]:
-
-def add_random_shadow(image):
-    top_y = 320*np.random.uniform()
-    top_x = 0
-    bot_x = 160
-    bot_y = 320*np.random.uniform()
-    image_hls = cv2.cvtColor(image,cv2.COLOR_BGR2HLS)
-    shadow_mask = 0*image_hls[:,:,1]
-    X_m = np.mgrid[0:image.shape[0],0:image.shape[1]][0]
-    Y_m = np.mgrid[0:image.shape[0],0:image.shape[1]][1]
-    shadow_mask[((X_m-top_x)*(bot_y-top_y) -(bot_x - top_x)*(Y_m-top_y) >=0)]=1
-    if np.random.randint(2)==1:
-        random_bright = .5
-        cond1 = shadow_mask==1
-        cond0 = shadow_mask==0
-        if np.random.randint(2)==1:
-            image_hls[:,:,1][cond1] = image_hls[:,:,1][cond1]*random_bright
-        else:
-            image_hls[:,:,1][cond0] = image_hls[:,:,1][cond0]*random_bright    
-
-    return cv2.cvtColor(image_hls,cv2.COLOR_HLS2BGR)
-
-
 # ## Image Preprocessing
 
 # Crop top and bottom images to remove sky and front of the car.
 # 
 # Then scale the image to be equivalent to NVIDIA's paper
 
-# In[10]:
+# In[7]:
 
 def image_preprocessing(image):
     # crop to 90x320x3
@@ -146,79 +92,9 @@ def image_preprocessing(image):
     return cv2.cvtColor(image, cv2.COLOR_BGR2YUV)
 
 
-# ## Data Visualization
-
-# In[11]:
-
-m = np.random.randint(0,len(samples))
-print('training example m :', m)
-
-sample = samples[m]
-center_image = cv2.imread(dataLocation + '/IMG/'+sample[0].split(directorySplitter)[-1])
-left_image = cv2.imread(dataLocation + '/IMG/'+sample[1].split(directorySplitter)[-1])
-right_image = cv2.imread(dataLocation + '/IMG/'+sample[2].split(directorySplitter)[-1])
-
-center_angle = float(sample[3])
-left_angle = center_angle + correction
-right_angle = center_angle - correction
-
-plt.figure
-
-fig, axes = plt.subplots(1,3, figsize=(30, 5))
-fig.subplots_adjust(hspace=0.0, wspace=0.01)
-
-images=[cv2.cvtColor(left_image, cv2.COLOR_BGR2RGB),
-        cv2.cvtColor(center_image, cv2.COLOR_BGR2RGB),
-        cv2.cvtColor(right_image, cv2.COLOR_BGR2RGB)]
-
-for i, ax in enumerate(axes.flat):
-    ax.imshow(images[i])
-    ax.set_xticks([])
-    ax.set_yticks([])
-
-plt.show()
-
-print(center_image.shape)
-
-
-# In[12]:
-
-center_image = augment_brightness_camera_images(center_image)
-center_image, center_angle = trans_image(center_image, center_angle, trans_range)
-center_image = add_random_shadow(center_image)
-
-left_image = augment_brightness_camera_images(left_image)
-left_image, left_angle = trans_image(left_image, left_angle, trans_range)
-left_image = add_random_shadow(left_image)
-
-right_image = augment_brightness_camera_images(right_image)
-right_image, right_angle = trans_image(right_image, right_angle, trans_range)
-right_image = add_random_shadow(right_image)
-
-center_image = image_preprocessing(center_image)
-left_image = image_preprocessing(left_image)
-right_image = image_preprocessing(right_image)
-
-fig, axes = plt.subplots(1,3, figsize=(30, 5))
-fig.subplots_adjust(hspace=0.0, wspace=0.01)
-
-images=[cv2.cvtColor(left_image, cv2.COLOR_YUV2RGB),
-        cv2.cvtColor(center_image, cv2.COLOR_YUV2RGB),
-        cv2.cvtColor(right_image, cv2.COLOR_YUV2RGB)]
-
-for i, ax in enumerate(axes.flat):
-    ax.imshow(images[i])
-    ax.set_xticks([])
-    ax.set_yticks([])
-
-plt.show()
-
-print(center_image.shape)
-
-
 # ## Generators
 
-# In[13]:
+# In[8]:
 
 def generator_training(samples, batch_size=32):
     while 1: # Loop forever so the generator never terminates
@@ -246,19 +122,6 @@ def generator_training(samples, batch_size=32):
                     left_angle *= -1
                     right_angle *= -1
                 
-                # Apply augmentation
-                center_image = augment_brightness_camera_images(center_image)
-                center_image, center_angle = trans_image(center_image, center_angle, trans_range)
-                center_image = add_random_shadow(center_image)
-
-                left_image = augment_brightness_camera_images(left_image)
-                left_image, left_angle = trans_image(left_image, left_angle, trans_range)
-                left_image = add_random_shadow(left_image)
-
-                right_image = augment_brightness_camera_images(right_image)
-                right_image, right_angle = trans_image(right_image, right_angle, trans_range)
-                right_image = add_random_shadow(right_image)
-                
                 images.append(image_preprocessing(center_image))
                 images.append(image_preprocessing(left_image))
                 images.append(image_preprocessing(right_image))
@@ -272,7 +135,7 @@ def generator_training(samples, batch_size=32):
             yield sklearn.utils.shuffle(X_train, y_train)
 
 
-# In[14]:
+# In[9]:
 
 def generator_validation(samples, batch_size=32):
     while 1: # Loop forever so the generator never terminates
@@ -299,13 +162,12 @@ def generator_validation(samples, batch_size=32):
                 angles.append(left_angle)
                 angles.append(right_angle)
 
-            # trim image to only see section with road
             X_train = np.array(images)
             y_train = np.array(angles)
             yield sklearn.utils.shuffle(X_train, y_train)
 
 
-# In[15]:
+# In[10]:
 
 # compile and train the model using the generator function
 train_generator = generator_training(train_samples, batch_size = 256)
@@ -314,7 +176,7 @@ validation_generator = generator_validation(validation_samples, batch_size = 256
 
 # ## Model Architecture
 
-# In[16]:
+# In[11]:
 
 def nvidia_model():   
     model = Sequential()
@@ -330,8 +192,11 @@ def nvidia_model():
     model.add(Flatten())
     
     model.add(Dense(100, activation = 'elu'))
+    model.add(Dropout(0.5))
     model.add(Dense(50, activation = 'elu'))
+    model.add(Dropout(0.3))
     model.add(Dense(10, activation = 'elu'))
+    model.add(Dropout(0.1))
     model.add(Dense(1, activation = 'elu'))
     
     model.summary()

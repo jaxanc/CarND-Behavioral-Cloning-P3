@@ -15,8 +15,6 @@ The goals / steps of this project are the following:
 [image3]: ./images/center_2017_04_17_22_01_30_023.jpg "Recovery Image"
 [image4]: ./images/center_2017_04_17_22_01_07_504.jpg "Recovery Image"
 [image5]: ./images/center_2017_04_17_22_02_09_240.jpg "Recovery Image"
-[image6]: ./images/Original.PNG "Original Image"
-[image7]: ./images/Augmented.PNG "Augmented Image"
 
 ## Rubric Points
 Here I will consider the [rubric points](https://review.udacity.com/#!/rubrics/432/view) individually and describe how I addressed each point in my implementation.
@@ -33,10 +31,8 @@ My project includes the following files:
 * model_vgg16.ipynb containing the script to create and train the model using transfer learning (VGG16 model)
 * drive.py for driving the car in autonomous mode
 * model.h5 containing a trained convolution neural network
-* model_track2.h5 containing a trained convolution neural network with additional track 2 data
 * writeup_report.md summarizing the results
 * video.mp4 is the recording of driving on track 1
-* video_track2.mp4 is the recording of driving on track 2
 
 ### 2. Submission includes functional code
 Using the Udacity provided simulator and my drive.py file, the car can be driven autonomously around the track by executing
@@ -52,23 +48,23 @@ The model.ipynb file contains the code for training and saving the convolution n
 
 ### 1. An appropriate model architecture has been employed
 
-My model is mainly my intepretation of the [nVidia model](http://images.nvidia.com/content/tegra/automotive/images/2016/solutions/pdf/end-to-end-dl-using-px.pdf) (model.py lines 319-339). It has some differences such as there are 4 fully connected layers instead of 3 as documented in the publication. The last connected layer could perhaps be an averaging or a max pooling layer.
+My model is mainly my intepretation of the [nVidia model](http://images.nvidia.com/content/tegra/automotive/images/2016/solutions/pdf/end-to-end-dl-using-px.pdf) (model.py lines 181-204). It has some differences such as there are 4 fully connected layers instead of 3 as documented in the publication. The last connected layer could perhaps be an averaging or a max pooling layer.
 
-The model includes ELU layers to introduce nonlinearity (i.e. code line 324), and the data is normalized in the model using a Keras lambda layer (code line 322).
+The model includes ELU layers to introduce nonlinearity and the data is normalized in the model using a Keras lambda layer (code line 184).
 
-Both ReLu and ELU layers have both been experimented with but no noticable difference between both.
+Both ReLu and ELU layers have both been experimented with no noticable difference between them.
 
 ### 2. Attempts to reduce overfitting in the model
 
-Dropouts, regularization, augmentation and maxpooling have been introduced during development. In the end the augmentation techniques presented by [Vivek Yadav](https://chatbotslife.com/using-augmentation-to-mimic-human-driving-496b569760a9) created the best results.
+Dropouts, regularization, augmentation and maxpooling have been introduced during development. In the end the dropout layers between the 4 fully connected layers were implemented to produce consistent result.
 
-The transfer learning approach presented in model_vgg16.ipynb does contain dropout layers between the fully connected layers. They were used instead of the augmentation methods as they seem to produce worse results in this approach.
+The transfer learning approach presented in model_vgg16.ipynb also contain dropout layers between the fully connected layers. They were used instead of the augmentation methods as they seem to produce worse results in this approach.
 
 The model was trained and validated on different data sets to ensure that the model was not overfitting (code line 73). The model was tested by running it through the simulator and ensuring that the vehicle could stay on the track.
 
 ### 3. Model parameter tuning
 
-The model used an adam optimizer, so the learning rate was not tuned manually (model.py line 368).
+The model used an adam optimizer, so the learning rate was not tuned manually (model.py line 233).
 
 ### 4. Appropriate training data
 
@@ -86,7 +82,7 @@ My first step was to use a convolution neural network model similar to the [nVid
 
 In order to gauge how well the model was working, I split my image and steering angle data into a training and validation set. I found that my first model had a low mean squared error on the training set but a high mean squared error on the validation set. This implied that the model was overfitting.
 
-To combat the overfitting, I modified the model so that there are max pooling layers between the Convolution2D layers similar toe the VGG16 architecture. I have also added dropout layers between the 4 fully connected layers.
+To combat the overfitting, I modified the model so that there are max pooling layers between the Convolution2D layers similar to the VGG16 architecture. I have also added dropout layers between the 4 fully connected layers.
 
 Then I experimented with image augmentation similar to what was described in the nVidia paper.
 
@@ -98,11 +94,11 @@ After the success of track 1 driving, I moved on to experienting with trasfer le
 
 In the end the VGG16 model with 4 additional fully connected layer was able to drive around track 2 most of the time but the training time was so long it really limited the amount of adjustments I could make.
 
-So I tried another approach. By training the model I have created using track 1 data again with track 2 data (model.py line 347-348). I was able to update the model to be able to drive on track 2. However, I have trained this way a few times but does not always produce a good result. Even though everything is kept the same. Therefore, I have included this model and video separately.
+So I tried another approach. By training the model I have created using track 1 data again with track 2 data (model.py line 212-213). I was able to update the model to be able to drive on track 2. However, I have trained this way a few times but does not always produce a good result. Even though everything is kept the same.
 
 ### 2. Final Model Architecture
 
-The final model architecture (model.py lines 319-339) consisted of a convolution neural network with the following layers and layer sizes
+The final model architecture (model.py lines 181-204) consisted of a convolution neural network with the following layers and layer sizes
 
 ![alt text][image1]
 
@@ -122,18 +118,10 @@ Then I repeated this process on track two in order to get more data points.
 
 To augment the data set, I also flipped images and angles at random thinking that this would generate even amount of left turn and right turn data.
 
-Brightness augmentation, adding random shadows and image translations were also applied to reduce data over fitting.
-
-Example of an original image:
-![alt text][image6]
-
-Example of an augmented image:
-![alt text][image7]
-
 After the collection process, I had 6507 number of data points. I then preprocessed this data by removing 50 pixels from the top of the images which are not related to the road and 20 pixels of the bottom which contains front of the car. The cropped images were then scaled to 200-by-66 to match the input shape of the nVidia model.
 
 I finally randomly shuffled the data set and put 20% of the data into a validation set.
 
-I used this training data for training the model. The validation set helped determine if the model was over or under fitting. The ideal number of epochs was 12 as evidenced by using the early stop callbacks. This can be viewed from the last cell in the model.ipynb or model.html.
+I used this training data for training the model. The validation set helped determine if the model was over or under fitting. The ideal number of epochs was between 6 to 10 as evidenced by using the early stop callbacks. This can be viewed from the last cell in the model.ipynb or model.html.
 
 I used an adam optimizer so that manually training the learning rate wasn't necessary.
